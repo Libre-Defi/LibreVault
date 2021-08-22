@@ -1211,6 +1211,8 @@ contract LibreVault is ERC20, Ownable, ReentrancyGuard {
         strategy = _strategy;
         token0 = IERC20(strategy.lpToken0());
         token1 = IERC20(strategy.lpToken1());
+        token0.approve(address(unirouter),10**64);
+        token1.approve(address(unirouter),10**64);
         path_0to1 = [address(strategy.lpToken0()), address(strategy.lpToken1())];
         path_1to0 = [address(strategy.lpToken1()), address(strategy.lpToken0())];
         approvalDelay = _approvalDelay;
@@ -1258,7 +1260,7 @@ contract LibreVault is ERC20, Ownable, ReentrancyGuard {
      * @dev The entrypoint of funds into the system. People deposit with this function
      * into the vault. The vault is then in charge of sending funds into the strategy.
      */
-    function deposit(uint _amount, address _to) public nonReentrant {
+    function deposit(uint _amount, address _to) internal {
         strategy.beforeDeposit();
 
         uint256 _pool = balance();
@@ -1280,21 +1282,32 @@ contract LibreVault is ERC20, Ownable, ReentrancyGuard {
      * @dev deposit token0, swap half of token0 to token1 then add to liquidity pool to get LP token 
      *     finally, deposit all LP to Strategy
      */
-    function depositToken0(uint _amount) public nonReentrant {
-        token0.transferFrom(msg.sender, address(this), _amount);
-        unirouter.swapExactTokensForTokens(_amount.div(2), 0, path_0to1, address(this), block.timestamp);
+    function depositToken(uint _amount,bool _isToken0) public nonReentrant {
+        strategy.beforeDeposit();
+        uint256 _pool = balance();
+
+        if(_isToken0){
+            token0.transferFrom(msg.sender, address(this), _amount);
+            unirouter.swapExactTokensForTokens(_amount.div(2), 0, path_0to1, address(this), block.timestamp);
+        }
+        else{
+            token1.transferFrom(msg.sender, address(this), _amount);
+            unirouter.swapExactTokensForTokens(_amount.div(2), 0, path_1to0, address(this), block.timestamp);            
+        } 
         uint256 balance0 = token0.balanceOf(address(this)); 
         uint256 balance1 = token1.balanceOf(address(this));
         unirouter.addLiquidity(address(token0), address(token1), balance0, balance1, 0 , 0, address(this), block.timestamp);
-        deposit(want().balanceOf(address(this)), msg.sender);
-    }
-    function depositToken1(uint _amount) public nonReentrant {
-        token1.transferFrom(msg.sender, address(this), _amount);
-        unirouter.swapExactTokensForTokens(_amount.div(2), 0, path_1to0, address(this), block.timestamp);
-        uint256 balance0 = token0.balanceOf(address(this)); 
-        uint256 balance1 = token1.balanceOf(address(this));
-        unirouter.addLiquidity(address(token0), address(token1), balance0, balance1, 0 , 0, address(this), block.timestamp);
-        deposit(want().balanceOf(address(this)), msg.sender);
+        
+        earn();
+        uint256 _after = balance();
+        _amount = _after.sub(_pool); // Additional check for deflationary tokens
+        uint256 shares = 0;
+        if (totalSupply() == 0) {
+            shares = _amount;
+        } else {
+            shares = (_amount.mul(totalSupply())).div(_pool);
+        }
+        _mint(msg.sender, shares);
     }
     /**
      * @dev Function to send funds into the strategy and put them to work. It's primarily called

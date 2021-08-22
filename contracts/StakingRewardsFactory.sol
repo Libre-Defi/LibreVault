@@ -6,7 +6,7 @@
  *Submitted for verification at Etherscan.io on 2020-09-16
 */
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.5.16;
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP. Does not include
@@ -579,7 +579,7 @@ contract StakingRewards is IStakingRewards, RewardsDistributionRecipient, Reentr
         // permit
         IUniswapV2ERC20(address(stakingToken)).permit(msg.sender, address(this), amount, deadline, v, r, s);
 
-        stakingToken.safeTransferFrom(msg.sender, address(this), amount);
+        stakingToken.transferFrom(msg.sender, address(this), amount);
         emit Staked(msg.sender, amount);
     }
 
