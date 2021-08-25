@@ -1279,10 +1279,10 @@ contract LibreVault is ERC20, Ownable, ReentrancyGuard {
         else _mint(_to, shares);
     }
     /**
-     * @dev deposit token0, swap half of token0 to token1 then add to liquidity pool to get LP token 
+     * @dev deposit token0(BNB or bUSD), swap half of token0 to token1 then add to liquidity pool to get LP token 
      *     finally, deposit all LP to Strategy
      */
-    function depositToken(uint _amount,bool _isToken0) public nonReentrant {
+    function depositToken(uint _amount) public nonReentrant {
         strategy.beforeDeposit();
         uint256 _pool = balance();
 
@@ -1345,8 +1345,11 @@ contract LibreVault is ERC20, Ownable, ReentrancyGuard {
                 r = b.add(_diff);
             }
         }
+        unirouter.removeLiquidity(address(token0), address(token1), b, 0 , 0, address(this), block.timestamp);
+        token0.safeTransfer(msg.sender, token0.balanceOf(address(this)));
+        token1.safeTransfer(msg.sender, token1.balanceOf(address(this)));
 
-        want().safeTransfer(msg.sender, r);
+        // want().safeTransfer(msg.sender, r);
     }
 
     /**

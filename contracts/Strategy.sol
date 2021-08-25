@@ -11,7 +11,7 @@
 */
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.6.0;
 
 /*
  * @dev Provides information about the current execution context, including the
@@ -37,7 +37,7 @@ abstract contract Context {
 // File: @openzeppelin/contracts/access/Ownable.sol
 
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.6.0;
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -106,7 +106,7 @@ contract Ownable is Context {
 // File: @openzeppelin/contracts/token/ERC20/IERC20.sol
 
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.6.0;
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
@@ -185,7 +185,7 @@ interface IERC20 {
 // File: @openzeppelin/contracts/math/SafeMath.sol
 
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.6.0;
 
 /**
  * @dev Wrappers over Solidity's arithmetic operations with added overflow
@@ -346,7 +346,7 @@ library SafeMath {
 // File: @openzeppelin/contracts/utils/Address.sol
 
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.6.2;
 
 /**
  * @dev Collection of functions related to the address type
@@ -489,7 +489,7 @@ library Address {
 // File: @openzeppelin/contracts/token/ERC20/ERC20.sol
 
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.6.0;
 
 
 
@@ -797,7 +797,7 @@ contract ERC20 is Context, IERC20 {
 // File: @openzeppelin/contracts/token/ERC20/SafeERC20.sol
 
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.6.0;
 
 
 
@@ -873,7 +873,7 @@ library SafeERC20 {
 // File: @openzeppelin/contracts/utils/Pausable.sol
 
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.6.0;
 
 
 /**
@@ -964,7 +964,7 @@ contract Pausable is Context {
 // File: contracts/BIFI/interfaces/common/IUniswapRouterETH.sol
 
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.6.0;
 
 interface IUniswapRouterETH {
     function addLiquidity(
@@ -1027,7 +1027,7 @@ interface IUniswapRouterETH {
 // File: contracts/BIFI/interfaces/common/IUniswapV2Pair.sol
 
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.6.0;
 
 interface IUniswapV2Pair {
     function token0() external view returns (address);
@@ -1035,7 +1035,7 @@ interface IUniswapV2Pair {
 }
 
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.6.0;
 
 interface IRewardPool {
     function deposit(uint256 amount) external;
@@ -1046,7 +1046,7 @@ interface IRewardPool {
 }
 
 
-pragma solidity ^0.8.0;
+pragma solidity >=0.6.2;
 
 
 contract StratManager is Ownable, Pausable {
@@ -1058,31 +1058,23 @@ contract StratManager is Ownable, Pausable {
      * {unirouter} - Address of exchange to execute swaps.
      */
     address public keeper;
-    address public strategist;
     address public unirouter;
     address public vault;
-    address public beefyFeeRecipient;
 
     /**
      * @dev Initializes the base strategy.
      * @param _keeper address to use as alternative owner.
-     * @param _strategist address where strategist fees go.
      * @param _unirouter router to use for swaps
      * @param _vault address of parent vault.
-     * @param _beefyFeeRecipient address where to send Beefy's fees.
      */
     constructor(
         address _keeper,
-        address _strategist,
         address _unirouter,
-        address _vault,
-        address _beefyFeeRecipient
+        address _vault
     ) public {
         keeper = _keeper;
-        strategist = _strategist;
         unirouter = _unirouter;
         vault = _vault;
-        beefyFeeRecipient = _beefyFeeRecipient;
     }
 
     // checks that caller is either owner or keeper.
@@ -1105,14 +1097,6 @@ contract StratManager is Ownable, Pausable {
         keeper = _keeper;
     }
 
-    /**
-     * @dev Updates address where strategist fee earnings will go.
-     * @param _strategist new strategist address.
-     */
-    function setStrategist(address _strategist) external {
-        require(msg.sender == strategist, "!strategist");
-        strategist = _strategist;
-    }
 
     /**
      * @dev Updates router that will be used for swaps.
@@ -1129,15 +1113,6 @@ contract StratManager is Ownable, Pausable {
     function setVault(address _vault) external onlyOwner {
         vault = _vault;
     }
-
-    /**
-     * @dev Updates beefy fee recipient.
-     * @param _beefyFeeRecipient new beefy fee recipient address.
-     */
-    function setBeefyFeeRecipient(address _beefyFeeRecipient) external onlyOwner {
-        beefyFeeRecipient = _beefyFeeRecipient;
-    }
-
     /**
      * @dev Function to synchronize balances before new user deposit.
      * Can be overridden in the strategy.
@@ -1147,55 +1122,31 @@ contract StratManager is Ownable, Pausable {
 
 
 
-pragma solidity ^0.8.0;
 
-abstract contract FeeManager is StratManager {
-    uint constant public STRATEGIST_FEE = 112;
-    uint constant public MAX_FEE = 1000;
-    uint constant public MAX_CALL_FEE = 111;
+pragma solidity ^0.6.0;
 
-    uint constant public WITHDRAWAL_FEE = 10;
-    uint constant public WITHDRAWAL_MAX = 10000;
-
-    uint public callFee = 111;
-    uint public beefyFee = MAX_FEE - STRATEGIST_FEE - callFee;
-
-    function setCallFee(uint256 _fee) external onlyManager {
-        require(_fee <= MAX_CALL_FEE, "!cap");
-        
-        callFee = _fee;
-        beefyFee = MAX_FEE - STRATEGIST_FEE - callFee;
-    }
-}
-
-
-
-
-pragma solidity ^0.8.0;
-
-
-
-
-contract StrategyRewardPoolPolygonLP is StratManager, FeeManager {
+contract StrategyRewardPoolPolygonLP is StratManager {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Tokens used
-    address constant public eth = address(0x51B2dC29d7BD651b15A2C6f781283CD5d974b698);
-    address constant public matic = address(0x929324E89233788f70F721e550C811620206749d);
-    address constant public output = address(0xd9145CCE52D386f254917e481eB44e9943F39138);
     address public want;
     address public lpToken0;
     address public lpToken1;
 
     // Third party contracts
     address public rewardPool;
+    
+    address constant public eth = address(0x51B2dC29d7BD651b15A2C6f781283CD5d974b698);
+    address constant public matic = address(0x929324E89233788f70F721e550C811620206749d);
+    address public output = address(0xd9145CCE52D386f254917e481eB44e9943F39138);
 
-    // Routes
-    address[] public outputToMaticRoute = [output, matic];
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
 
+    // 2% withdraw fee
+    uint256 WITHDRAWAL_FEE=2;
+    uint256 WITHDRAWAL_MAX=100;
     /**
      * @dev Event that is fired each time someone harvests the strat.
      */
@@ -1206,15 +1157,12 @@ contract StrategyRewardPoolPolygonLP is StratManager, FeeManager {
         address _rewardPool,
         address _vault,
         address _unirouter,
-        address _keeper,
-        address _strategist,
-        address _beefyFeeRecipient
-    ) StratManager(_keeper, _strategist, _unirouter, _vault, _beefyFeeRecipient) public {
+        address _keeper
+    ) StratManager(_keeper, _unirouter, _vault) public {
         want = _want;
         lpToken0 = IUniswapV2Pair(want).token0();
         lpToken1 = IUniswapV2Pair(want).token1();
         rewardPool = _rewardPool;
-
         if (lpToken0 == matic) {
             outputToLp0Route = [output, matic];
         } else if (lpToken0 == eth) {
@@ -1230,7 +1178,6 @@ contract StrategyRewardPoolPolygonLP is StratManager, FeeManager {
         } else if (lpToken1 != output) {
             outputToLp1Route = [output, matic, lpToken1];
         }
-
         _giveAllowances();
     }
 
@@ -1262,34 +1209,17 @@ contract StrategyRewardPoolPolygonLP is StratManager, FeeManager {
         } else {
             uint256 withdrawalFee = wantBal.mul(WITHDRAWAL_FEE).div(WITHDRAWAL_MAX);
             IERC20(want).safeTransfer(vault, wantBal.sub(withdrawalFee));
+            IERC20(want).safeTransfer(owner(), withdrawalFee);
         }
     }
 
     // compounds earnings and charges performance fee
     function harvest() external whenNotPaused onlyEOA {
         IRewardPool(rewardPool).getReward();
-        chargeFees();
         addLiquidity();
         deposit();
 
         emit StratHarvest(msg.sender);
-    }
-
-    // performance fees
-    function chargeFees() internal {
-        uint256 toMatic = IERC20(output).balanceOf(address(this)).mul(45).div(1000);
-        IUniswapRouterETH(unirouter).swapExactTokensForTokens(toMatic, 0, outputToMaticRoute, address(this), now);
-
-        uint256 maticBal = IERC20(matic).balanceOf(address(this));
-
-        uint256 callFeeAmount = maticBal.mul(callFee).div(MAX_FEE);
-        IERC20(matic).safeTransfer(msg.sender, callFeeAmount);
-
-        uint256 beefyFeeAmount = maticBal.mul(beefyFee).div(MAX_FEE);
-        IERC20(matic).safeTransfer(beefyFeeRecipient, beefyFeeAmount);
-
-        uint256 strategistFee = maticBal.mul(STRATEGIST_FEE).div(MAX_FEE);
-        IERC20(matic).safeTransfer(strategist, strategistFee);
     }
 
     // Adds liquidity to AMM and gets more LP tokens.
